@@ -137,6 +137,21 @@ module Authorization
       end
     end
 
+    def determine_parent_namespace(nested_contexts)
+      if nested_contexts.respond_to?(:[])
+        nested_in =nil
+        nested_contexts.each do |context|
+          if params[context.to_s + "_id"]
+            nested_in = context
+            break
+          end
+        end
+        nested_in
+      else
+        nested_contexts
+      end
+    end
+
     def load_controller_object (context_without_namespace = nil) # :nodoc:
       instance_var = :"@#{context_without_namespace.to_s.singularize}"
       model = context_without_namespace.to_s.classify.constantize
@@ -144,23 +159,28 @@ module Authorization
     end
 
     def load_parent_controller_object (parent_context_without_namespace) # :nodoc:
-      instance_var = :"@#{parent_context_without_namespace.to_s.singularize}"
-      model = parent_context_without_namespace.to_s.classify.constantize
-      instance_variable_set(instance_var, model.find(params[:"#{parent_context_without_namespace.to_s.singularize}_id"]))
+      parent_context = determine_parent_namespace(parent_context_without_namespace)
+      return if parent_context.nil?
+      instance_var = :"@#{parent_context.to_s.singularize}"
+      model = parent_context.to_s.classify.constantize
+      instance_variable_set(instance_var, model.find(params[:"#{parent_context.to_s.singularize}_id"]))
+      instance_variable_set("@parent", model.find(params[:"#{parent_context.to_s.singularize}_id"]))
     end
 
     def new_controller_object_from_params (context_without_namespace, parent_context_without_namespace) # :nodoc:
-      model_or_proxy = parent_context_without_namespace ?
-           instance_variable_get(:"@#{parent_context_without_namespace.to_s.singularize}").send(context_without_namespace.to_sym) :
+      parent_context = determine_parent_namespace(parent_context_without_namespace)
+      model_or_proxy = parent_context ?
+           instance_variable_get(:"@#{parent_context.to_s.singularize}").send(context_without_namespace.to_sym) :
            context_without_namespace.to_s.classify.constantize
       instance_var = :"@#{context_without_namespace.to_s.singularize}"
       instance_variable_set(instance_var,
-          model_or_proxy.new(params[context_without_namespace.to_s.singularize]))
+          model_or_proxy.create(params[context_without_namespace.to_s.singularize]))
     end
 
     def new_controller_object_for_collection (context_without_namespace, parent_context_without_namespace) # :nodoc:
-      model_or_proxy = parent_context_without_namespace ?
-           instance_variable_get(:"@#{parent_context_without_namespace.to_s.singularize}").send(context_without_namespace.to_sym) :
+      parent_context = determine_parent_namespace(parent_context_without_namespace)
+      model_or_proxy = parent_context ?
+           instance_variable_get(:"@#{parent_context.to_s.singularize}").send(context_without_namespace.to_sym) :
            context_without_namespace.to_s.classify.constantize
       instance_var = :"@#{context_without_namespace.to_s.singularize}"
       instance_variable_set(instance_var, model_or_proxy.new)
