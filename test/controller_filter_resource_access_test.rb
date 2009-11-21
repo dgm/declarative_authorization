@@ -4,6 +4,9 @@ class BasicResource < MockDataObject
   def self.name
     "BasicResource"
   end
+  def self.create(attributes = {})
+    new(attributes)
+  end
 end
 class BasicResourcesController < MocksController
   filter_resource_access
@@ -101,6 +104,13 @@ class ParentMock < MockDataObject
         @parent_mock = parent_mock
       end
       def new (attributes = {})
+        NestedResource.new(attributes.merge(:parent_mock => @parent_mock))
+      end
+      def build(attributes = {})
+        NestedResource.new(attributes.merge(:parent_mock => @parent_mock))
+      end
+
+      def create(attributes = {})
         NestedResource.new(attributes.merge(:parent_mock => @parent_mock))
       end
     end.new(self)
