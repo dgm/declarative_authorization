@@ -184,6 +184,14 @@ module Authorization
            context_without_namespace.to_s.classify.constantize
       instance_var = :"@#{context_without_namespace.to_s.singularize}"
       instance_variable_set(instance_var, model_or_proxy.new)
+      if parent_context
+        parent_relationship = instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send("class").reflect_on_association(parent_context.to_s.pluralize.to_sym).macro
+        if parent_relationship == :has_many
+          instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send(parent_context.to_s.pluralize) << instance_variable_get(:"@#{parent_context.to_s.singularize}")
+        elsif parent_relationship == :belongs_to
+          instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send(parent_context.to_s).send("=", instance_variable_get(:"@#{parent_context.to_s.singularize}"))
+        end
+      end
     end
 
     def options_for_permit (object_or_sym = nil, options = {}, bang = true)
