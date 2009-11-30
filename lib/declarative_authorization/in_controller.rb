@@ -169,12 +169,18 @@ module Authorization
 
     def new_controller_object_from_params (context_without_namespace, parent_context_without_namespace) # :nodoc:
       parent_context = determine_parent_namespace(parent_context_without_namespace)
-      model_or_proxy = parent_context ?
-           instance_variable_get(:"@#{parent_context.to_s.singularize}").send(context_without_namespace.to_sym) :
-           context_without_namespace.to_s.classify.constantize
+      model = context_without_namespace.to_s.classify.constantize
       instance_var = :"@#{context_without_namespace.to_s.singularize}"
       instance_variable_set(instance_var,
-          model_or_proxy.new(params[context_without_namespace.to_s.singularize]))
+          model.new(params[context_without_namespace.to_s.singularize]))
+      if parent_context
+        parent_relationship = instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send("class").reflect_on_association(parent_context.to_s.pluralize.to_sym).macro
+        if parent_relationship == :has_many
+          instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send(parent_context.to_s.pluralize) << instance_variable_get(:"@#{parent_context.to_s.singularize}")
+        elsif parent_relationship == :belongs_to
+          instance_variable_get(:"@#{context_without_namespace.to_s.singularize}").send(parent_context.to_s).send("=", instance_variable_get(:"@#{parent_context.to_s.singularize}"))
+        end
+      end
     end
 
     def new_controller_object_for_collection (context_without_namespace, parent_context_without_namespace) # :nodoc:
